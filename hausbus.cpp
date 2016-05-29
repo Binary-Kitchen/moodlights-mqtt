@@ -122,11 +122,20 @@ Data Hausbus::create_packet(const Byte src, const Byte dst, const Data &payload)
 
 void Hausbus::send_packet(const Data &packet)
 {
+    // set uart to output
     _rs485_tx();
+
+    // write data
     const auto nbytes = write(_fd_serial, packet.data(), packet.size());
-    _rs485_rx();
     if (nbytes != packet.size())
         throw_errno(_device_filename);
+
+    // wait for data to be transmitted
+    if (tcdrain(_fd_serial) != 0)
+        throw_errno(_device_filename + " tcdrain");
+
+    // set uart to input
+    _rs485_rx();
 }
 
 void Hausbus::send(const Byte src, const Byte dst, const Data &payload)
