@@ -52,17 +52,21 @@ void Moodlights::rand_all()
         lamp = rand_color();
 }
 
-Hausbus &operator <<(Hausbus &h, const Moodlights &m)
+Data Moodlights::get_payload() const
 {
     Data payload(MOODLIGHTS_LAMPS * 3);
 
     // assemble packet
     for (int i = 0 ; i < MOODLIGHTS_LAMPS ; i++) {
-        payload[i*3] = m._lamps[i][0];
-        payload[i*3 + 1] = m._lamps[i][1];
-        payload[i*3 + 2] = m._lamps[i][2];
+        payload[i*3] = _lamps[i][0];
+        payload[i*3 + 1] = _lamps[i][1];
+        payload[i*3 + 2] = _lamps[i][2];
     }
 
-    // send packet
-    h.send(m._src, m._dst, payload);
+    return payload;
+}
+
+Hausbus &operator <<(Hausbus &h, const Moodlights &m)
+{
+    h.send(m._src, m._dst, m.get_payload());
 }

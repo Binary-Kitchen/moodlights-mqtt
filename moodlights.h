@@ -24,6 +24,8 @@ public:
     void rand(const unsigned char no);
     void rand_all();
 
+    Data get_payload() const;
+
     friend Hausbus& operator <<(Hausbus &in, const Moodlights &m);
 
 private:
