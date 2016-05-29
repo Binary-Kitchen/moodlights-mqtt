@@ -7,8 +7,8 @@
 
 #include <mosquittopp.h>
 
-#include "hausbus.h"
-#include "moodlights.h"
+#include "libhausbus/hausbus.h"
+#include "libhausbus/moodlights.h"
 
 using namespace std;
 
