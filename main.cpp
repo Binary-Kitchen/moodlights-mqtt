@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     Moodlights m(MY_DEVICE_IDENTIFIER, MOODLIGHT_DEVICE_IDENTIFIER);
 
     // Set all lights and wait a second
-    m.set_all(Moodlights::Color{255,0, 123});
+    m.set_all(Moodlights::Color{255, 0, 123});
     hausbus << m;
     sleep(1);
 
