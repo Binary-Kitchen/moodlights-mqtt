@@ -52,7 +52,14 @@ Hausbus::Hausbus(const std::string &device_filename,
         throw_errno(_device_filename);
 
     // Configure RS485 direction selector
-    _write_sys("/sys/class/gpio/export", "18\n");
+    try {
+        _write_sys("/sys/class/gpio/export", "18\n");
+    }
+    catch (const std::system_error &err) {
+        // EBUSY will be received if gpio is already exported
+        if (err.code().value() != EBUSY)
+            throw err;
+    }
     _write_sys("/sys/class/gpio/gpio18/direction", "out\n");
     _fd_rs485_direction = open("/sys/class/gpio/gpio18/value", O_WRONLY);
     _rs485_rx();
