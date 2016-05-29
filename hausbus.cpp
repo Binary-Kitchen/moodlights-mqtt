@@ -15,7 +15,7 @@
 
 Hausbus::Hausbus(const std::string &device_filename,
                  const int speed,
-                 const unsigned char preamble) :
+                 const Byte preamble) :
    _device_filename(device_filename),
    _preamble(preamble)
 {
@@ -63,7 +63,7 @@ Hausbus::~Hausbus()
         throw_errno();
 }
 
-Data Hausbus::create_packet(const unsigned char src, const unsigned char dst, const Data &payload) const
+Data Hausbus::create_packet(const Byte src, const Byte dst, const Data &payload) const
 {
     if (payload.size() > HAUSBUS_MAX_PACKET_LENGTH)
         throw std::runtime_error("Exeeded maximum packet size");
@@ -95,7 +95,7 @@ void Hausbus::send_packet(const Data &packet)
         throw_errno();
 }
 
-void Hausbus::send(const unsigned char src, const unsigned char dst, const Data &payload)
+void Hausbus::send(const Byte src, const Byte dst, const Data &payload)
 {
     send_packet(create_packet(src, dst, payload));
 }

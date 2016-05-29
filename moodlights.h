@@ -10,18 +10,18 @@
 class Moodlights {
 public:
     // Format: R:G:B
-    using Color = std::array<unsigned char, 3>;
+    using Color = std::array<Byte, 3>;
 
-    Moodlights(const unsigned char src, const unsigned char dst);
+    Moodlights(const Byte src, const Byte dst);
     ~Moodlights();
 
     static Color rand_color();
 
-    void set(unsigned char no, const Color &c);
+    void set(unsigned int no, const Color &c);
     void set_all(const Color &c);
-    const Color &get(unsigned char no) const;
+    const Color &get(unsigned int no) const;
 
-    void rand(const unsigned char no);
+    void rand(const unsigned int no);
     void rand_all();
 
     Data get_payload() const;
@@ -30,8 +30,8 @@ public:
 
 private:
 
-    const unsigned char _src;
-    const unsigned char _dst;
+    const Byte _src;
+    const Byte _dst;
 
     std::array<Color, MOODLIGHTS_LAMPS> _lamps;
 };

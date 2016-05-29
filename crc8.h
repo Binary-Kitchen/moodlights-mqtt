@@ -5,9 +5,9 @@
 #include "data.h"
 
 namespace CRC8 {
-    bool verify(const char* data, size_t len, unsigned char cksum);
+    bool verify(const char* data, size_t len, Byte cksum);
 
-    unsigned char create(const unsigned char* data, size_t len);
-    unsigned char create(const Data &d);
-    unsigned char create(const Data &d, size_t len);
+    Byte create(const Byte* data, size_t len);
+    Byte create(const Data &d);
+    Byte create(const Data &d, size_t len);
 }

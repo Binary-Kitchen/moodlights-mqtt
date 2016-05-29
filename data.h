@@ -2,4 +2,5 @@
 
 #include <vector>
 
-using Data = std::vector<unsigned char>;
+using Byte = unsigned char;
+using Data = std::vector<Byte>;

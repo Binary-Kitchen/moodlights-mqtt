@@ -2,9 +2,9 @@
 
 #include "moodlights.h"
 
-#define rand_byte() ((unsigned char)::rand())
+#define rand_byte() ((Byte)::rand())
 
-Moodlights::Moodlights(const unsigned char src, const unsigned char dst) :
+Moodlights::Moodlights(const Byte src, const Byte dst) :
     _src(src),
     _dst(dst)
 {
@@ -19,7 +19,7 @@ Moodlights::Color Moodlights::rand_color()
     return Moodlights::Color {rand_byte(), rand_byte(), rand_byte()};
 }
 
-void Moodlights::set(unsigned char no, const Color &c)
+void Moodlights::set(unsigned int no, const Color &c)
 {
     if (no > MOODLIGHTS_LAMPS)
         throw std::runtime_error("Invalid lamp");
@@ -33,7 +33,7 @@ void Moodlights::set_all(const Color &c)
         set(i, c);
 }
 
-const Moodlights::Color &Moodlights::get(unsigned char no) const
+const Moodlights::Color &Moodlights::get(unsigned int no) const
 {
     if (no > MOODLIGHTS_LAMPS)
         throw std::runtime_error("Invalid lamp");
@@ -41,7 +41,7 @@ const Moodlights::Color &Moodlights::get(unsigned char no) const
     return _lamps[no];
 }
 
-void Moodlights::rand(const unsigned char no)
+void Moodlights::rand(const unsigned int no)
 {
     set(no, rand_color());
 }
