@@ -50,16 +50,41 @@ Hausbus::Hausbus(const std::string &device_filename,
 
     if (tcsetattr (_fd_serial, TCSANOW, &tty) != 0)
         throw_errno();
+
+    // Configure RS485 direction selector
+    _write_sys("/sys/class/gpio/export", "18\n");
+    _write_sys("/sys/class/gpio/gpio18/direction", "out\n");
+    _fd_rs485_direction = open("/sys/class/gpio/gpio18/value", O_WRONLY);
+    _rs485_rx();
 }
 
 Hausbus::~Hausbus()
 {
+    _write_sys("/sys/class/gpio/unexport", "18\n");
+
+    if (_fd_rs485_direction == 0)
+        goto release_serial;
+
+    if (close(_fd_rs485_direction) != 0)
+        throw_errno();
+
+release_serial:
     // Only close device if it is opened correctly
     if (_fd_serial == 0)
         return;
 
     // Check return value of close()
     if (close(_fd_serial) != 0)
+        throw_errno();
+}
+
+void Hausbus::_rs485_rx() {
+    if (write(_fd_rs485_direction, "0\n", 2) != 2)
+        throw_errno();
+}
+
+void Hausbus::_rs485_tx() {
+    if (write(_fd_rs485_direction, "1\n", 2) != 2)
         throw_errno();
 }
 
@@ -90,7 +115,9 @@ Data Hausbus::create_packet(const Byte src, const Byte dst, const Data &payload)
 
 void Hausbus::send_packet(const Data &packet)
 {
+    _rs485_tx();
     const auto nbytes = write(_fd_serial, packet.data(), packet.size());
+    _rs485_rx();
     if (nbytes != packet.size())
         throw_errno();
 }
@@ -98,4 +125,18 @@ void Hausbus::send_packet(const Data &packet)
 void Hausbus::send(const Byte src, const Byte dst, const Data &payload)
 {
     send_packet(create_packet(src, dst, payload));
+}
+
+void Hausbus::_write_sys(const char* file, const char* content)
+{
+    int fd = open(file, O_WRONLY);
+    if (fd == 0)
+        throw_errno();
+
+    auto nbytes = write(fd, content, strlen(content));
+    if (nbytes != strlen(content))
+        throw_errno();
+
+    if (close(fd) != 0)
+        throw_errno();
 }

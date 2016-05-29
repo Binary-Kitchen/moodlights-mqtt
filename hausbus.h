@@ -25,6 +25,12 @@ public:
 
 private:
 
+    // Selectors for rs485 direction
+    void _rs485_tx();
+    void _rs485_rx();
+
+    static void _write_sys(const char* file, const char* content);
+
     // header structure according to Hausbus protocol
     struct Header {
         Byte preamble;
@@ -36,5 +42,6 @@ private:
     const Byte _preamble;
     const std::string _device_filename;
 
+    int _fd_rs485_direction;
     int _fd_serial;
 };
