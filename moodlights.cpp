@@ -8,6 +8,7 @@ Moodlights::Moodlights(const Byte src, const Byte dst) :
     _src(src),
     _dst(dst)
 {
+    set_all(Color {0, 0, 0});
 }
 
 Moodlights::~Moodlights()
@@ -16,7 +17,7 @@ Moodlights::~Moodlights()
 
 Moodlights::Color Moodlights::rand_color()
 {
-    return Moodlights::Color {rand_byte(), rand_byte(), rand_byte()};
+    return Color {rand_byte(), rand_byte(), rand_byte()};
 }
 
 void Moodlights::set(unsigned int no, const Color &c)
