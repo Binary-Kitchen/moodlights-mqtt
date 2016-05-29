@@ -2,6 +2,4 @@
   - verify answers
   - propagate errors
 
-- Connect to MQTT library
-
 - Factor out hausbus library?
