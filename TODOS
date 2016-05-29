@@ -1,5 +1,3 @@
 - Asynchronous hausbus packet retrieval
   - verify answers
   - propagate errors
-
-- Factor out hausbus library?
