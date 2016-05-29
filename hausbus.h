@@ -36,5 +36,5 @@ private:
     const Byte _preamble;
     const std::string _device_filename;
 
-    int _fd;
+    int _fd_serial;
 };

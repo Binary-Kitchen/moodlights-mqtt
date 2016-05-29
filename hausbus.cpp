@@ -22,13 +22,13 @@ Hausbus::Hausbus(const std::string &device_filename,
     struct termios tty;
 
     // Open device descriptor
-    _fd = open(_device_filename.c_str(), O_RDWR);
-    if (_fd == 0)
+    _fd_serial = open(_device_filename.c_str(), O_RDWR);
+    if (_fd_serial == 0)
         throw_errno();
 
     // Set baudrate
     memset (&tty, 0, sizeof tty);
-    if (tcgetattr (_fd, &tty) != 0)
+    if (tcgetattr (_fd_serial, &tty) != 0)
         throw_errno();
 
     cfsetospeed (&tty, speed);
@@ -48,18 +48,18 @@ Hausbus::Hausbus(const std::string &device_filename,
     tty.c_cflag &= ~CSTOPB;
     tty.c_cflag &= ~CRTSCTS;
 
-    if (tcsetattr (_fd, TCSANOW, &tty) != 0)
+    if (tcsetattr (_fd_serial, TCSANOW, &tty) != 0)
         throw_errno();
 }
 
 Hausbus::~Hausbus()
 {
     // Only close device if it is opened correctly
-    if (_fd == 0)
+    if (_fd_serial == 0)
         return;
 
     // Check return value of close()
-    if (close(_fd) != 0)
+    if (close(_fd_serial) != 0)
         throw_errno();
 }
 
@@ -90,7 +90,7 @@ Data Hausbus::create_packet(const Byte src, const Byte dst, const Data &payload)
 
 void Hausbus::send_packet(const Data &packet)
 {
-    const auto nbytes = write(_fd, packet.data(), packet.size());
+    const auto nbytes = write(_fd_serial, packet.data(), packet.size());
     if (nbytes != packet.size())
         throw_errno();
 }
