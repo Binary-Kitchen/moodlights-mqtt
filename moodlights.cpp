@@ -2,7 +2,7 @@
 
 #include "moodlights.h"
 
-#define RAND_BYTE ((unsigned char)::rand())
+#define rand_byte() ((unsigned char)::rand())
 
 Moodlights::Moodlights(const unsigned char src, const unsigned char dst) :
     _src(src),
@@ -12,6 +12,11 @@ Moodlights::Moodlights(const unsigned char src, const unsigned char dst) :
 
 Moodlights::~Moodlights()
 {
+}
+
+Moodlights::Color Moodlights::rand_color()
+{
+    return Moodlights::Color {rand_byte(), rand_byte(), rand_byte()};
 }
 
 void Moodlights::set(unsigned char no, const Color &c)
@@ -38,13 +43,13 @@ const Moodlights::Color &Moodlights::get(unsigned char no) const
 
 void Moodlights::rand(const unsigned char no)
 {
-    set(no, Moodlights::Color {RAND_BYTE, RAND_BYTE, RAND_BYTE});
+    set(no, rand_color());
 }
 
 void Moodlights::rand_all()
 {
-    for (int i = 0 ; i < MOODLIGHTS_LAMPS ; i++)
-        rand(i);
+    for (auto &lamp : _lamps)
+        lamp = rand_color();
 }
 
 Hausbus &operator <<(Hausbus &h, const Moodlights &m)

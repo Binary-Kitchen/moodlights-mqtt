@@ -9,10 +9,13 @@
 
 class Moodlights {
 public:
+    // Format: R:G:B
     using Color = std::array<unsigned char, 3>;
 
     Moodlights(const unsigned char src, const unsigned char dst);
     ~Moodlights();
+
+    static Color rand_color();
 
     void set(unsigned char no, const Color &c);
     void set_all(const Color &c);
