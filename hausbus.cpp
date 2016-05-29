@@ -11,7 +11,7 @@
 #include "crc8.h"
 #include "hausbus.h"
 
-#define throw_errno() throw std::system_error(errno, std::system_category())
+#define throw_errno(x) throw std::system_error(errno, std::system_category(), x)
 
 Hausbus::Hausbus(const std::string &device_filename,
                  const int speed,
@@ -24,12 +24,12 @@ Hausbus::Hausbus(const std::string &device_filename,
     // Open device descriptor
     _fd_serial = open(_device_filename.c_str(), O_RDWR);
     if (_fd_serial == 0)
-        throw_errno();
+        throw_errno(_device_filename);
 
     // Set baudrate
     memset (&tty, 0, sizeof tty);
     if (tcgetattr (_fd_serial, &tty) != 0)
-        throw_errno();
+        throw_errno(_device_filename);
 
     cfsetospeed (&tty, speed);
     cfsetispeed (&tty, speed);
@@ -49,7 +49,7 @@ Hausbus::Hausbus(const std::string &device_filename,
     tty.c_cflag &= ~CRTSCTS;
 
     if (tcsetattr (_fd_serial, TCSANOW, &tty) != 0)
-        throw_errno();
+        throw_errno(_device_filename);
 
     // Configure RS485 direction selector
     _write_sys("/sys/class/gpio/export", "18\n");
@@ -66,7 +66,7 @@ Hausbus::~Hausbus()
         goto release_serial;
 
     if (close(_fd_rs485_direction) != 0)
-        throw_errno();
+        throw_errno("RS485 Direction GPIO");
 
 release_serial:
     // Only close device if it is opened correctly
@@ -75,17 +75,17 @@ release_serial:
 
     // Check return value of close()
     if (close(_fd_serial) != 0)
-        throw_errno();
+        throw_errno(_device_filename);
 }
 
 void Hausbus::_rs485_rx() {
     if (write(_fd_rs485_direction, "0\n", 2) != 2)
-        throw_errno();
+        throw_errno(_device_filename);
 }
 
 void Hausbus::_rs485_tx() {
     if (write(_fd_rs485_direction, "1\n", 2) != 2)
-        throw_errno();
+        throw_errno(_device_filename);
 }
 
 Data Hausbus::create_packet(const Byte src, const Byte dst, const Data &payload) const
@@ -119,7 +119,7 @@ void Hausbus::send_packet(const Data &packet)
     const auto nbytes = write(_fd_serial, packet.data(), packet.size());
     _rs485_rx();
     if (nbytes != packet.size())
-        throw_errno();
+        throw_errno(_device_filename);
 }
 
 void Hausbus::send(const Byte src, const Byte dst, const Data &payload)
@@ -131,12 +131,12 @@ void Hausbus::_write_sys(const char* file, const char* content)
 {
     int fd = open(file, O_WRONLY);
     if (fd == 0)
-        throw_errno();
+        throw_errno(file);
 
     auto nbytes = write(fd, content, strlen(content));
     if (nbytes != strlen(content))
-        throw_errno();
+        throw_errno(file);
 
     if (close(fd) != 0)
-        throw_errno();
+        throw_errno(file);
 }
