@@ -38,6 +38,9 @@ int main(int argc, char **argv) {
     // destination id: 0x10, moodlights device identifier
     moodlights = std::unique_ptr<Moodlights>(new Moodlights(MY_DEVICE_IDENTIFIER, MOODLIGHT_DEVICE_IDENTIFIER));
 
+    // initialise lamps
+    *hausbus << *moodlights;
+
     if (mosqpp::lib_cleanup() != MOSQ_ERR_SUCCESS)
         throw std::runtime_error("Mosquitto cleanup failed");
 
