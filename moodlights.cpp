@@ -67,6 +67,16 @@ Data Moodlights::get_payload() const
     return payload;
 }
 
+void Moodlights::blank(unsigned int no)
+{
+    set(no, Color {0, 0, 0});
+}
+
+void Moodlights::blank_all()
+{
+    set_all(Color {0, 0, 0});
+}
+
 Hausbus &operator <<(Hausbus &h, const Moodlights &m)
 {
     h.send(m._src, m._dst, m.get_payload());

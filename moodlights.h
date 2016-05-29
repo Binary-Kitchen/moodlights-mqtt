@@ -21,6 +21,9 @@ public:
     void set_all(const Color &c);
     const Color &get(unsigned int no) const;
 
+    void blank(unsigned int no);
+    void blank_all();
+
     void rand(const unsigned int no);
     void rand_all();
 
