@@ -122,6 +122,10 @@ private:
             goto status_out;
         }
 
+        // ignore status topic
+        if (topic == _status_topic)
+            return;
+
         // check if moodlight topic
         if (!std::regex_match(topic, sm, _topic_regex)) {
             cerr << "Unknown topic: " << topic << endl;
