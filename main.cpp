@@ -26,7 +26,6 @@
 
 using namespace std;
 
-#define MOODLIGHT_DEVICE_IDENTIFIER 0x10
 #define MY_DEVICE_IDENTIFIER 0xfe
 
 // gobal access mutex to prevent race conditions
@@ -232,7 +231,7 @@ int main(int argc, char **argv) {
 
         // source id: 0xFE
         // destination id: 0x10, moodlights device identifier
-        moodlights = std::unique_ptr<Moodlights>(new Moodlights(MY_DEVICE_IDENTIFIER, MOODLIGHT_DEVICE_IDENTIFIER));
+        moodlights = std::unique_ptr<Moodlights>(new Moodlights(MY_DEVICE_IDENTIFIER));
 
         // initialise lamps
         *hausbus << *moodlights;
