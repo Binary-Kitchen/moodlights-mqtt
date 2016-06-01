@@ -73,11 +73,6 @@ private:
 
     const std::regex _topic_regex;
     const static std::regex _lamp_regex;
-    const static std::regex _rgb_regex;
-
-    const static Byte _fromHex(const std::string hex) {
-        return (unsigned char)strtoul(hex.c_str(), nullptr, 16);
-    }
 
     void on_connect(int rc) {
         if (rc == 0)
@@ -105,7 +100,6 @@ private:
         std::string topic(msg->topic);
         std::string payload((const char*)msg->payload, msg->payloadlen);
 
-        std::string lamp_string;
         Byte lamp = 0;
         std::smatch sm;
 
@@ -137,21 +131,18 @@ private:
             return;
         }
 
-        lamp_string = sm[1];
-        lamp = _fromHex(lamp_string);
+        lamp = (Byte)::strtoul(((std::string)sm[1]).c_str(), nullptr, 16);
 
         if (payload == "rand") {
             rand = true;
         } else {
-            if (!std::regex_match(payload, sm, _rgb_regex)) {
-                cerr << "Unknown RGB message" << endl;
+            auto tmp_color = Moodlights::parse_color(payload);
+            if (tmp_color)
+                color = *tmp_color;
+            else {
+                cerr << "Unable to parse color" << endl;
                 return;
             }
-
-            color = {_fromHex(sm[1]),
-                     _fromHex(sm[2]),
-                     _fromHex(sm[3])};
-
         }
 
         lock.lock();
@@ -174,7 +165,6 @@ private:
 };
 
 const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
-const std::regex MQTT_Moodlights::_rgb_regex("#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})");
 
 int main(int argc, char **argv) {
     if (argc != 2) {
