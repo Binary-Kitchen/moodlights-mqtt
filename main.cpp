@@ -41,11 +41,13 @@ public:
                     const std::string &host,
                     const std::string &moodlight_topic,
                     const std::string &shutdown_topic,
+                    const std::string &status_topic,
                     int port = 1883) :
         mosquittopp(id.c_str()),
         _id(id),
         _moodlight_topic(moodlight_topic + "/"),
         _shutdown_topic(shutdown_topic),
+        _status_topic(status_topic),
         _host(host),
         _port(port),
         _keepalive(60),
@@ -67,6 +69,7 @@ private:
     const std::string _id;
     const std::string _moodlight_topic;
     const std::string _shutdown_topic;
+    const std::string _status_topic;
     const std::string _host;
     const int _port;
     const int _keepalive;
@@ -160,7 +163,12 @@ private:
         *hausbus << *moodlights;
 
         status_out:
-        return;
+        publish_status();
+    }
+
+    void publish_status() const
+    {
+
     }
 };
 
@@ -189,7 +197,8 @@ int main(int argc, char **argv) {
         MQTT_Moodlights mq("MqttMoodlights",
                            "sushi.binary.kitchen",
                            "kitchen/moodlights",
-                           "kitchen/shutdown");
+                           "kitchen/shutdown",
+                           "kitchen/moodlights/status");
 
         while (true) {
             auto res = mq.loop();
