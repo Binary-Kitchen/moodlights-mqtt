@@ -175,14 +175,16 @@ private:
 const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
 int main(int argc, char **argv) {
+    int err;
     if (argc != 2) {
         cerr << "Usage: " << argv[0] << " device_name" << endl;
         return -1;
     }
 
     try {
-        if (mosqpp::lib_init() != MOSQ_ERR_SUCCESS)
-            throw std::runtime_error("Mosquitto initialisation failed");
+        err = mosqpp::lib_init();
+        if (err != MOSQ_ERR_SUCCESS)
+            throw std::runtime_error((std::string)"Mosquitto initialisation failed: " + mosquitto_strerror(err));
 
         // Initialise Moodlights and Hausbus
         hausbus = std::unique_ptr<Hausbus>(new Hausbus(argv[1]));
@@ -201,16 +203,19 @@ int main(int argc, char **argv) {
                            "kitchen/moodlights/status");
 
         while (true) {
-            auto res = mq.loop();
-            if (res)
+            err = mq.loop();
+            if (err != MOSQ_ERR_SUCCESS) {
+                cerr << "Mosquitto runtime error: " << mosquitto_strerror(err) << endl;
                 mq.reconnect();
+            }
 
             // sleep for 10ms
             usleep(1e4);
         }
 
-        if (mosqpp::lib_cleanup() != MOSQ_ERR_SUCCESS)
-            throw std::runtime_error("Mosquitto cleanup failed");
+        err = mosqpp::lib_cleanup();
+        if (err != MOSQ_ERR_SUCCESS)
+            throw std::runtime_error((std::string)"Mosquitto cleanup failed: " + mosquitto_strerror(err));
     }
     catch (const std::exception &ex) {
         cerr << argv[0] << " failed: " << ex.what() << endl;
