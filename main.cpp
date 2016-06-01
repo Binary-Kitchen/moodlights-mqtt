@@ -106,6 +106,10 @@ private:
         Byte lamp = 0;
         std::smatch sm;
 
+#ifdef DEBUG
+        cerr << "DEBUG: topic: '" << topic << "' payload: '" << payload << "'" << endl;
+#endif
+
         // check if shutdown topic
         if (topic == _shutdown_topic) {
             cout << "Received shutdown message" << endl;
