@@ -44,11 +44,12 @@ public:
                     int port = 1883) :
         mosquittopp(id.c_str()),
         _id(id),
-        _moodlight_topic(moodlight_topic),
+        _moodlight_topic(moodlight_topic + "/"),
         _shutdown_topic(shutdown_topic),
         _host(host),
         _port(port),
-        _keepalive(60)
+        _keepalive(60),
+        _topic_regex(_moodlight_topic + "(.*)")
     {
         if (connect(_host.c_str(), _port, _keepalive) != MOSQ_ERR_SUCCESS)
             throw std::runtime_error("Mosquitto connection to " + _host + " failed");
@@ -70,7 +71,8 @@ private:
     const int _port;
     const int _keepalive;
 
-    const static std::regex _message_regex;
+    const std::regex _topic_regex;
+    const static std::regex _lamp_regex;
     const static std::regex _rgb_regex;
 
     const static Byte _fromHex(const std::string hex) {
@@ -83,7 +85,7 @@ private:
         else
             cerr << "Unable to connect to server " << _host << " (" << rc << ")" << endl;
 
-        if (subscribe(nullptr, _moodlight_topic.c_str()) != MOSQ_ERR_SUCCESS)
+        if (subscribe(nullptr, (_moodlight_topic + "#").c_str()) != MOSQ_ERR_SUCCESS)
             cerr << "Subscription failed for topic " << _moodlight_topic << endl;
 
         if (subscribe(nullptr, _shutdown_topic.c_str()) != MOSQ_ERR_SUCCESS)
@@ -100,7 +102,11 @@ private:
         std::string topic(msg->topic);
         std::string payload((const char*)msg->payload, msg->payloadlen);
 
-        // check topic
+        std::string lamp_string;
+        Byte lamp = 0;
+        std::smatch sm;
+
+        // check if shutdown topic
         if (topic == _shutdown_topic) {
             cout << "Received shutdown message" << endl;
 
@@ -111,33 +117,32 @@ private:
             return;
         }
 
-        if (topic != _moodlight_topic)
+        // check if moodlight topic
+        if (!std::regex_match(topic, sm, _topic_regex)) {
+            cerr << "Unknown topic: " << topic << endl;
             return;
+        }
+        topic = sm[1];
 
-        if (!std::regex_match(payload, _message_regex)) {
-            cerr << "Got unknown message for topic " << topic << ": " << payload << endl;
+        if (!std::regex_match(topic, sm, _lamp_regex)) {
+            cerr << "Unknown subtopic: " << topic << endl;
             return;
         }
 
-        std::smatch sm;
-        std::regex_match(payload, sm, _message_regex);
+        lamp_string = sm[1];
+        lamp = _fromHex(lamp_string);
 
-        Byte lamp = _fromHex(sm[1]);
-
-        if (sm[2] == "rand") {
+        if (payload == "rand") {
             rand = true;
         } else {
-            const std::string rgb_str = sm[2];
-            std::smatch rgb_sm;
-
-            if (!std::regex_match(rgb_str, rgb_sm, _rgb_regex)) {
+            if (!std::regex_match(payload, sm, _rgb_regex)) {
                 cerr << "Unknown RGB message" << endl;
                 return;
             }
 
-            color = {_fromHex(rgb_sm[1]),
-                     _fromHex(rgb_sm[2]),
-                     _fromHex(rgb_sm[3])};
+            color = {_fromHex(sm[1]),
+                     _fromHex(sm[2]),
+                     _fromHex(sm[3])};
 
         }
 
@@ -157,8 +162,8 @@ private:
     }
 };
 
-const std::regex MQTT_Moodlights::_message_regex("([0-9a-fA-F])#(.*)");
-const std::regex MQTT_Moodlights::_rgb_regex("([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})");
+const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
+const std::regex MQTT_Moodlights::_rgb_regex("#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})");
 
 int main(int argc, char **argv) {
     if (argc != 2) {
