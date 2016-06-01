@@ -156,9 +156,7 @@ private:
             *hausbus << *moodlights;
             lock.unlock();
             goto status_out;
-        }
-
-        if (topic == _get_subtopic) {
+        } else if (topic == _get_subtopic) {
             goto status_out;
         } else if (!std::regex_match(topic, sm, _lamp_regex)) {
             cerr << "Unknown subtopic: " << topic << endl;
