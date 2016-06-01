@@ -166,9 +166,18 @@ private:
         publish_status();
     }
 
-    void publish_status() const
+    void publish_status()
     {
-
+        std::string status;
+        int err;
+        for (int i = 0 ; i < 10 ; i++) {
+            status += Moodlights::color_to_string(moodlights->get(i));
+            if (i != 9) status += ' ';
+        }
+        err = publish(nullptr, _status_topic.c_str(), status.size()+1, status.c_str(), 0, false);
+        if (err != MOSQ_ERR_SUCCESS) {
+            cerr << "Mosquitto Publish error: " << mosquitto_strerror(err) << endl;
+        }
     }
 };
 
