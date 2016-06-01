@@ -171,35 +171,41 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    if (mosqpp::lib_init() != MOSQ_ERR_SUCCESS)
-        throw std::runtime_error("Mosquitto initialisation failed");
+    try {
+        if (mosqpp::lib_init() != MOSQ_ERR_SUCCESS)
+            throw std::runtime_error("Mosquitto initialisation failed");
 
-    // Initialise Moodlights and Hausbus
-    hausbus = std::unique_ptr<Hausbus>(new Hausbus(argv[1]));
+        // Initialise Moodlights and Hausbus
+        hausbus = std::unique_ptr<Hausbus>(new Hausbus(argv[1]));
 
-    // source id: 0xFE
-    // destination id: 0x10, moodlights device identifier
-    moodlights = std::unique_ptr<Moodlights>(new Moodlights(MY_DEVICE_IDENTIFIER, MOODLIGHT_DEVICE_IDENTIFIER));
+        // source id: 0xFE
+        // destination id: 0x10, moodlights device identifier
+        moodlights = std::unique_ptr<Moodlights>(new Moodlights(MY_DEVICE_IDENTIFIER, MOODLIGHT_DEVICE_IDENTIFIER));
 
-    // initialise lamps
-    *hausbus << *moodlights;
+        // initialise lamps
+        *hausbus << *moodlights;
 
-    MQTT_Moodlights mq("MqttMoodlights",
-                       "sushi.binary.kitchen",
-                       "kitchen/moodlights",
-                       "kitchen/shutdown");
+        MQTT_Moodlights mq("MqttMoodlights",
+                           "sushi.binary.kitchen",
+                           "kitchen/moodlights",
+                           "kitchen/shutdown");
 
-    while (true) {
-        auto res = mq.loop();
-        if (res)
-            mq.reconnect();
+        while (true) {
+            auto res = mq.loop();
+            if (res)
+                mq.reconnect();
 
-        // sleep for 10ms
-        usleep(1e4);
+            // sleep for 10ms
+            usleep(1e4);
+        }
+
+        if (mosqpp::lib_cleanup() != MOSQ_ERR_SUCCESS)
+            throw std::runtime_error("Mosquitto cleanup failed");
     }
-
-    if (mosqpp::lib_cleanup() != MOSQ_ERR_SUCCESS)
-        throw std::runtime_error("Mosquitto cleanup failed");
+    catch (const std::exception &ex) {
+        cerr << argv[0] << " failed: " << ex.what() << endl;
+        return -1;
+    }
 
     return 0;
 }
