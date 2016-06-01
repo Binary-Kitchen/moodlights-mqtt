@@ -206,7 +206,7 @@ private:
         }
         err = publish(nullptr, _status_topic.c_str(), status.size()+1, status.c_str(), 0, false);
         if (err != MOSQ_ERR_SUCCESS) {
-            cerr << "Mosquitto Publish error: " << mosquitto_strerror(err) << endl;
+            cerr << "Mosquitto publish error: " << mosquitto_strerror(err) << endl;
         }
     }
 };
