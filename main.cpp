@@ -97,6 +97,9 @@ private:
     }
 
     void on_message(const struct mosquitto_message* msg) {
+        // lock for critical sections
+        std::unique_lock<std::mutex> lock(global_mutex, std::defer_lock);
+
         Moodlights::Color color;
         bool rand = false;
         std::string topic(msg->topic);
@@ -114,11 +117,12 @@ private:
         if (topic == _shutdown_topic) {
             cout << "Received shutdown message" << endl;
 
-            // Lock critical section
-            std::lock_guard<std::mutex> _m(global_mutex);
+            lock.lock();
             moodlights->blank_all();
             *hausbus << *moodlights;
-            return;
+            lock.unlock();
+
+            goto status_out;
         }
 
         // check if moodlight topic
@@ -150,7 +154,7 @@ private:
 
         }
 
-        std::lock_guard<std::mutex> _m(global_mutex);
+        lock.lock();
         if (rand)
             if (lamp > 9)
                 moodlights->rand_all();
@@ -161,8 +165,11 @@ private:
                 moodlights->set_all(color);
             else
                 moodlights->set(lamp, color);
-
+        lock.unlock();
         *hausbus << *moodlights;
+
+        status_out:
+        return;
     }
 };
 
