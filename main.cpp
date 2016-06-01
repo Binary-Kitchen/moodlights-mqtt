@@ -73,6 +73,7 @@ private:
     const std::string _shutdown_topic;
     const std::string _status_topic;
     const static std::string _get_subtopic;
+    const static std::string _rand_identifier;
     const std::string _host;
     const int _port;
     const int _keepalive;
@@ -136,15 +137,15 @@ private:
         topic = sm[1];
 
         if (topic == "set") {
-            boost::char_separator<char> sep(" ");
-            boost::tokenizer<boost::char_separator<char>> tokens(payload, sep);
+            const boost::char_separator<char> sep(" ");
+            const boost::tokenizer<boost::char_separator<char>> tokens(payload, sep);
             int i = 0;
             lock.lock();
             for (const auto &token: tokens) {
-                std::experimental::optional<Moodlights::Color> tmp_color = Moodlights::parse_color(token);
+                const std::experimental::optional<Moodlights::Color> tmp_color = Moodlights::parse_color(token);
                 if (tmp_color) {
                     moodlights->set(i++, *tmp_color);
-                } else if (token == "rand") {
+                } else if (token == _rand_identifier) {
                     moodlights->rand(i++);
                 } else {
                     cerr << "Unable to parse part of payload" << endl;
@@ -165,7 +166,7 @@ private:
 
         lamp = (Byte)::strtoul(((std::string)sm[1]).c_str(), nullptr, 16);
 
-        if (payload == "rand") {
+        if (payload == _rand_identifier) {
             rand = true;
         } else {
             auto tmp_color = Moodlights::parse_color(payload);
@@ -210,6 +211,7 @@ private:
     }
 };
 
+const std::string MQTT_Moodlights::_rand_identifier("rand");
 const std::string MQTT_Moodlights::_get_subtopic("get");
 const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
