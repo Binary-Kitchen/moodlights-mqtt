@@ -72,6 +72,7 @@ private:
     const std::string _moodlight_topic;
     const std::string _shutdown_topic;
     const std::string _status_topic;
+    const static std::string _get_subtopic;
     const std::string _host;
     const int _port;
     const int _keepalive;
@@ -157,7 +158,9 @@ private:
             goto status_out;
         }
 
-        if (!std::regex_match(topic, sm, _lamp_regex)) {
+        if (topic == _get_subtopic) {
+            goto status_out;
+        } else if (!std::regex_match(topic, sm, _lamp_regex)) {
             cerr << "Unknown subtopic: " << topic << endl;
             return;
         }
@@ -209,6 +212,7 @@ private:
     }
 };
 
+const std::string MQTT_Moodlights::_get_subtopic("get");
 const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
 int main(int argc, char **argv) {
