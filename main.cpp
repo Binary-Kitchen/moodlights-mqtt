@@ -17,6 +17,8 @@
 #include <mutex>
 #include <regex>
 
+#include <boost/tokenizer.hpp>
+
 #include <mosquittopp.h>
 
 #include "libhausbus/hausbus.h"
@@ -113,7 +115,6 @@ private:
         // check if shutdown topic
         if (topic == _shutdown_topic) {
             cout << "Received shutdown message" << endl;
-
             lock.lock();
             moodlights->blank_all();
             *hausbus << *moodlights;
@@ -132,6 +133,29 @@ private:
             return;
         }
         topic = sm[1];
+
+        if (topic == "set") {
+            boost::char_separator<char> sep(" ");
+            boost::tokenizer<boost::char_separator<char>> tokens(payload, sep);
+            int i = 0;
+            lock.lock();
+            for (const auto &token: tokens) {
+                std::experimental::optional<Moodlights::Color> tmp_color = Moodlights::parse_color(token);
+                if (tmp_color) {
+                    moodlights->set(i++, *tmp_color);
+                } else if (token == "rand") {
+                    moodlights->rand(i++);
+                } else {
+                    cerr << "Unable to parse part of payload" << endl;
+                    *hausbus << *moodlights;
+                    lock.unlock();
+                    goto status_out;
+                }
+            }
+            *hausbus << *moodlights;
+            lock.unlock();
+            goto status_out;
+        }
 
         if (!std::regex_match(topic, sm, _lamp_regex)) {
             cerr << "Unknown subtopic: " << topic << endl;
