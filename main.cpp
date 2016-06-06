@@ -152,6 +152,8 @@ private:
                     lock.unlock();
                     goto status_out;
                 }
+                if (i == 10)
+                    break;
             }
             *hausbus << *moodlights;
             lock.unlock();
