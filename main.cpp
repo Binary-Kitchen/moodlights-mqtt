@@ -183,15 +183,15 @@ private:
 
         lock.lock();
         if (rand)
-            if (lamp > 9)
-                moodlights->rand_all();
-            else
+            if (lamp < MOODLIGHTS_LAMPS)
                 moodlights->rand(lamp);
-        else
-            if (lamp > 9)
-                moodlights->set_all(color);
             else
+                moodlights->rand_all();
+        else
+            if (lamp < MOODLIGHTS_LAMPS)
                 moodlights->set(lamp, color);
+            else
+                moodlights->set_all(color);
         lock.unlock();
         *hausbus << *moodlights;
 
