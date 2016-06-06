@@ -91,6 +91,8 @@ private:
 
         if (subscribe(nullptr, _shutdown_topic.c_str()) != MOSQ_ERR_SUCCESS)
             cerr << "Subscription failed for topic " << _shutdown_topic << endl;
+
+        publish_status();
     }
 
     void on_disconnect(int rc) {
