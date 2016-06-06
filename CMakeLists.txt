@@ -12,3 +12,4 @@ add_executable(moodlights_mqtt ${SRCS})
 target_link_libraries(moodlights_mqtt mosquittopp mosquitto hausbus)
 
 install(TARGETS moodlights_mqtt RUNTIME DESTINATION bin)
+install(FILES scripts/moodlights.service DESTINATION /etc/systemd/system/)
