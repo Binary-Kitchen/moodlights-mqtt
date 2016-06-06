@@ -1,6 +1,7 @@
 [Unit]
 Description=Moodlight MQTT service
-After=network.target
+Wants=network.target network-online.target dev-ttyAMA0.device
+After=network.target network-online.target dev-ttyAMA0.device
 
 [Service]
 ExecStart=/usr/local/bin/moodlights_mqtt /dev/ttyAMA0
