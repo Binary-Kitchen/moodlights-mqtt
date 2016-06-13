@@ -224,7 +224,10 @@ int main(int argc, char **argv) {
         cerr << "Usage: " << argv[0] << " device_name" << endl;
         return -1;
     }
+	// Wait for devices to settle down
+	sleep(10);
 
+retry:
     try {
         err = mosqpp::lib_init();
         if (err != MOSQ_ERR_SUCCESS)
@@ -263,7 +266,9 @@ int main(int argc, char **argv) {
     }
     catch (const std::exception &ex) {
         cerr << argv[0] << " failed: " << ex.what() << endl;
-        return -1;
+        sleep(10);
+        cerr << "Retrying..." << endl;
+        goto retry;
     }
 
     return 0;
