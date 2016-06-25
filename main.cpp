@@ -270,14 +270,11 @@ retry:
                            "kitchen/moodlights/status");
 
         while (true) {
-            err = mq.loop();
+            err = mq.loop_forever();
             if (err != MOSQ_ERR_SUCCESS) {
                 cerr << "Mosquitto runtime error: " << mosquitto_strerror(err) << endl;
                 mq.reconnect();
             }
-
-            // sleep for 10ms
-            usleep(1e4);
         }
 
         err = mosqpp::lib_cleanup();
