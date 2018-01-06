@@ -1,7 +1,7 @@
 /*
  * moodlights-mqtt: A RS485 <-> mqtt bridge
  *
- * Copyright (c) Ralf Ramsauer, 2016
+ * Copyright (c) Ralf Ramsauer, 2016, 2018
  *
  * Authors:
  *   Ralf Ramsauer <ralf@binary-kitchen.de>
@@ -264,7 +264,7 @@ retry:
         reg_sig(SIGTERM);
 
         MQTT_Moodlights mq("MqttMoodlights",
-                           "sushi.binary.kitchen",
+                           "172.23.4.6",
                            "kitchen/moodlights",
                            "kitchen/shutdown",
                            "kitchen/moodlights/status");
