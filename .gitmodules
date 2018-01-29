@@ -1,3 +1,0 @@
-[submodule "libhausbus"]
-	path = libhausbus
-	url = git@github.com:Binary-Kitchen/libhausbus.git
