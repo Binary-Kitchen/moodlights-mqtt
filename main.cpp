@@ -63,8 +63,7 @@ public:
     }
 
     virtual ~MQTT_Moodlights() {
-        if (loop_stop() != MOSQ_ERR_SUCCESS)
-            throw std::runtime_error("Mosquitto loop_stop failed");
+        loop_stop();
     }
 
 private:

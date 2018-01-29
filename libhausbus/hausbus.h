@@ -39,10 +39,6 @@ public:
 
 private:
 
-    // Selectors for rs485 direction
-    void _rs485_tx();
-    void _rs485_rx();
-
     static void _write_sys(const char* file, const char* content);
 
     // header structure according to Hausbus protocol

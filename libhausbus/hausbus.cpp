@@ -64,23 +64,12 @@ Hausbus::Hausbus(const std::string &device_filename,
 
     if (tcsetattr (_fd_serial, TCSANOW, &tty) != 0)
         throw_errno(_device_filename);
-
-    _rs485_rx();
 }
 
 Hausbus::~Hausbus()
 {
-    if (_fd_serial == 0)
-        return;
-
-    if (close(_fd_serial) != 0)
-        throw_errno(_device_filename);
-}
-
-void Hausbus::_rs485_rx() {
-}
-
-void Hausbus::_rs485_tx() {
+    if (_fd_serial)
+        close(_fd_serial);
 }
 
 Data Hausbus::create_packet(const Byte src, const Byte dst, const Data &payload) const
@@ -110,9 +99,6 @@ Data Hausbus::create_packet(const Byte src, const Byte dst, const Data &payload)
 
 void Hausbus::send_packet(const Data &packet)
 {
-    // set uart to output
-    _rs485_tx();
-
     // write data
     const auto nbytes = write(_fd_serial, packet.data(), packet.size());
     if (nbytes != packet.size())
@@ -121,9 +107,6 @@ void Hausbus::send_packet(const Data &packet)
     // wait for data to be transmitted
     if (tcdrain(_fd_serial) != 0)
         throw_errno(_device_filename + " tcdrain");
-
-    // set uart to input
-    _rs485_rx();
 }
 
 void Hausbus::send(const Byte src, const Byte dst, const Data &payload)
