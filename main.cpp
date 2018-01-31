@@ -62,7 +62,8 @@ public:
             throw std::runtime_error("Mosquitto loop_start failed");
     }
 
-    virtual ~MQTT_Moodlights() {
+    virtual ~MQTT_Moodlights()
+    {
         loop_stop();
     }
 
@@ -80,7 +81,8 @@ private:
     const std::regex _topic_regex;
     const static std::regex _lamp_regex;
 
-    void on_connect(int rc) {
+    void on_connect(int rc)
+    {
         if (rc == 0)
             cout << "Mosquitto connected: " << _host << endl;
         else
@@ -95,11 +97,13 @@ private:
         publish_status();
     }
 
-    void on_disconnect(int rc) {
+    void on_disconnect(int rc)
+    {
         cout << "Mosquitto disconnected with code " << rc << endl;
     }
 
-    void on_message(const struct mosquitto_message* msg) {
+    void on_message(const struct mosquitto_message* msg)
+    {
         // lock for critical sections
         std::unique_lock<std::mutex> lock(global_mutex, std::defer_lock);
 
@@ -187,15 +191,14 @@ private:
                 moodlights->rand(lamp);
             else
                 moodlights->rand_all();
+        else if (lamp < MOODLIGHTS_LAMPS)
+            moodlights->set(lamp, color);
         else
-            if (lamp < MOODLIGHTS_LAMPS)
-                moodlights->set(lamp, color);
-            else
-                moodlights->set_all(color);
+            moodlights->set_all(color);
         lock.unlock();
         *hausbus << *moodlights;
 
-        status_out:
+status_out:
         publish_status();
     }
 
@@ -218,7 +221,8 @@ const std::string MQTT_Moodlights::_rand_identifier("rand");
 const std::string MQTT_Moodlights::_get_subtopic("get");
 const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
-static void signal_handler(int signo) {
+static void signal_handler(int signo)
+{
     if (hausbus && moodlights) {
         moodlights->blank_all();
         *hausbus << *moodlights;
@@ -227,14 +231,15 @@ static void signal_handler(int signo) {
     hausbus.reset();
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     int err;
     if (argc != 2) {
         cerr << "Usage: " << argv[0] << " device_name" << endl;
         return -1;
     }
-	// Wait for devices to settle down
-	sleep(10);
+    // Wait for devices to settle down
+    sleep(10);
 
 retry:
     try {
@@ -254,7 +259,8 @@ retry:
 
         // register signal handlers
         auto reg_sig = [] (int sig) -> void {
-            if (signal(sig, signal_handler) == SIG_ERR) {
+            if (signal(sig, signal_handler) == SIG_ERR)
+            {
                 cerr << "Error registering signal handler" << endl;
                 throw std::runtime_error("Error registering signal");
             }
@@ -279,8 +285,7 @@ retry:
         err = mosqpp::lib_cleanup();
         if (err != MOSQ_ERR_SUCCESS)
             throw std::runtime_error((std::string)"Mosquitto cleanup failed: " + mosquitto_strerror(err));
-    }
-    catch (const std::exception &ex) {
+    } catch (const std::exception &ex) {
         cerr << argv[0] << " failed: " << ex.what() << endl;
         sleep(10);
         cerr << "Retrying..." << endl;
