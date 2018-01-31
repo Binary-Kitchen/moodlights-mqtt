@@ -39,182 +39,182 @@ static std::unique_ptr<Moodlights> moodlights = nullptr;
 class MQTT_Moodlights : public mosqpp::mosquittopp
 {
 public:
-    MQTT_Moodlights(const std::string &id,
-                    const std::string &host,
-                    const std::string &moodlight_topic,
-                    const std::string &shutdown_topic,
-                    const std::string &status_topic,
-                    int port = 1883) :
-        mosquittopp(id.c_str()),
-        _id(id),
-        _moodlight_topic(moodlight_topic + "/"),
-        _shutdown_topic(shutdown_topic),
-        _status_topic(status_topic),
-        _host(host),
-        _port(port),
-        _keepalive(60),
-        _topic_regex(_moodlight_topic + "(.*)")
-    {
-        if (connect(_host.c_str(), _port, _keepalive) != MOSQ_ERR_SUCCESS)
-            throw std::runtime_error("Mosquitto connection to " + _host + " failed");
+	MQTT_Moodlights(const std::string &id,
+	                const std::string &host,
+	                const std::string &moodlight_topic,
+	                const std::string &shutdown_topic,
+	                const std::string &status_topic,
+	                int port = 1883) :
+		mosquittopp(id.c_str()),
+		_id(id),
+		_moodlight_topic(moodlight_topic + "/"),
+		_shutdown_topic(shutdown_topic),
+		_status_topic(status_topic),
+		_host(host),
+		_port(port),
+		_keepalive(60),
+		_topic_regex(_moodlight_topic + "(.*)")
+	{
+		if (connect(_host.c_str(), _port, _keepalive) != MOSQ_ERR_SUCCESS)
+			throw std::runtime_error("Mosquitto connection to " + _host + " failed");
 
-        if (loop_start() != MOSQ_ERR_SUCCESS)
-            throw std::runtime_error("Mosquitto loop_start failed");
-    }
+		if (loop_start() != MOSQ_ERR_SUCCESS)
+			throw std::runtime_error("Mosquitto loop_start failed");
+	}
 
-    virtual ~MQTT_Moodlights()
-    {
-        loop_stop();
-    }
+	virtual ~MQTT_Moodlights()
+	{
+		loop_stop();
+	}
 
 private:
-    const std::string _id;
-    const std::string _moodlight_topic;
-    const std::string _shutdown_topic;
-    const std::string _status_topic;
-    const static std::string _get_subtopic;
-    const static std::string _rand_identifier;
-    const std::string _host;
-    const int _port;
-    const int _keepalive;
+	const std::string _id;
+	const std::string _moodlight_topic;
+	const std::string _shutdown_topic;
+	const std::string _status_topic;
+	const static std::string _get_subtopic;
+	const static std::string _rand_identifier;
+	const std::string _host;
+	const int _port;
+	const int _keepalive;
 
-    const std::regex _topic_regex;
-    const static std::regex _lamp_regex;
+	const std::regex _topic_regex;
+	const static std::regex _lamp_regex;
 
-    void on_connect(int rc)
-    {
-        if (rc == 0)
-            cout << "Mosquitto connected: " << _host << endl;
-        else
-            cerr << "Unable to connect to server " << _host << " (" << rc << ")" << endl;
+	void on_connect(int rc)
+	{
+		if (rc == 0)
+			cout << "Mosquitto connected: " << _host << endl;
+		else
+			cerr << "Unable to connect to server " << _host << " (" << rc << ")" << endl;
 
-        if (subscribe(nullptr, (_moodlight_topic + "#").c_str()) != MOSQ_ERR_SUCCESS)
-            cerr << "Subscription failed for topic " << _moodlight_topic << endl;
+		if (subscribe(nullptr, (_moodlight_topic + "#").c_str()) != MOSQ_ERR_SUCCESS)
+			cerr << "Subscription failed for topic " << _moodlight_topic << endl;
 
-        if (subscribe(nullptr, _shutdown_topic.c_str()) != MOSQ_ERR_SUCCESS)
-            cerr << "Subscription failed for topic " << _shutdown_topic << endl;
+		if (subscribe(nullptr, _shutdown_topic.c_str()) != MOSQ_ERR_SUCCESS)
+			cerr << "Subscription failed for topic " << _shutdown_topic << endl;
 
-        publish_status();
-    }
+		publish_status();
+	}
 
-    void on_disconnect(int rc)
-    {
-        cout << "Mosquitto disconnected with code " << rc << endl;
-    }
+	void on_disconnect(int rc)
+	{
+		cout << "Mosquitto disconnected with code " << rc << endl;
+	}
 
-    void on_message(const struct mosquitto_message* msg)
-    {
-        // lock for critical sections
-        std::unique_lock<std::mutex> lock(global_mutex, std::defer_lock);
+	void on_message(const struct mosquitto_message* msg)
+	{
+		// lock for critical sections
+		std::unique_lock<std::mutex> lock(global_mutex, std::defer_lock);
 
-        Moodlights::Color color;
-        bool rand = false;
-        std::string topic(msg->topic);
-        std::string payload((const char*)msg->payload, msg->payloadlen);
+		Moodlights::Color color;
+		bool rand = false;
+		std::string topic(msg->topic);
+		std::string payload((const char*)msg->payload, msg->payloadlen);
 
-        Byte lamp = 0;
-        std::smatch sm;
+		Byte lamp = 0;
+		std::smatch sm;
 
 #ifdef DEBUG
-        cerr << "DEBUG: topic: '" << topic << "' payload: '" << payload << "'" << endl;
+		cerr << "DEBUG: topic: '" << topic << "' payload: '" << payload << "'" << endl;
 #endif
 
-        // check if shutdown topic
-        if (topic == _shutdown_topic) {
-            cout << "Received shutdown message" << endl;
-            lock.lock();
-            moodlights->blank_all();
-            *hausbus << *moodlights;
-            lock.unlock();
+		// check if shutdown topic
+		if (topic == _shutdown_topic) {
+			cout << "Received shutdown message" << endl;
+			lock.lock();
+			moodlights->blank_all();
+			*hausbus << *moodlights;
+			lock.unlock();
 
-            goto status_out;
-        }
+			goto status_out;
+		}
 
-        // ignore status topic
-        if (topic == _status_topic)
-            return;
+		// ignore status topic
+		if (topic == _status_topic)
+			return;
 
-        // check if moodlight topic
-        if (!std::regex_match(topic, sm, _topic_regex)) {
-            cerr << "Unknown topic: " << topic << endl;
-            return;
-        }
-        topic = sm[1];
+		// check if moodlight topic
+		if (!std::regex_match(topic, sm, _topic_regex)) {
+			cerr << "Unknown topic: " << topic << endl;
+			return;
+		}
+		topic = sm[1];
 
-        if (topic == "set") {
-            const boost::char_separator<char> sep(" ");
-            const boost::tokenizer<boost::char_separator<char>> tokens(payload, sep);
-            int i = 0;
-            lock.lock();
-            for (const auto &token: tokens) {
-                const std::experimental::optional<Moodlights::Color> tmp_color = Moodlights::parse_color(token);
-                if (tmp_color) {
-                    moodlights->set(i++, *tmp_color);
-                } else if (token == _rand_identifier) {
-                    moodlights->rand(i++);
-                } else {
-                    cerr << "Unable to parse part of payload" << endl;
-                    *hausbus << *moodlights;
-                    lock.unlock();
-                    goto status_out;
-                }
-                if (i == 10)
-                    break;
-            }
-            *hausbus << *moodlights;
-            lock.unlock();
-            goto status_out;
-        } else if (topic == _get_subtopic) {
-            goto status_out;
-        } else if (!std::regex_match(topic, sm, _lamp_regex)) {
-            cerr << "Unknown subtopic: " << topic << endl;
-            return;
-        }
+		if (topic == "set") {
+			const boost::char_separator<char> sep(" ");
+			const boost::tokenizer<boost::char_separator<char>> tokens(payload, sep);
+			int i = 0;
+			lock.lock();
+			for (const auto &token: tokens) {
+				const std::experimental::optional<Moodlights::Color> tmp_color = Moodlights::parse_color(token);
+				if (tmp_color) {
+					moodlights->set(i++, *tmp_color);
+				} else if (token == _rand_identifier) {
+					moodlights->rand(i++);
+				} else {
+					cerr << "Unable to parse part of payload" << endl;
+					*hausbus << *moodlights;
+					lock.unlock();
+					goto status_out;
+				}
+				if (i == 10)
+					break;
+			}
+			*hausbus << *moodlights;
+			lock.unlock();
+			goto status_out;
+		} else if (topic == _get_subtopic) {
+			goto status_out;
+		} else if (!std::regex_match(topic, sm, _lamp_regex)) {
+			cerr << "Unknown subtopic: " << topic << endl;
+			return;
+		}
 
-        lamp = (Byte)::strtoul(((std::string)sm[1]).c_str(), nullptr, 16);
+		lamp = (Byte)::strtoul(((std::string)sm[1]).c_str(), nullptr, 16);
 
-        if (payload == _rand_identifier) {
-            rand = true;
-        } else {
-            auto tmp_color = Moodlights::parse_color(payload);
-            if (tmp_color)
-                color = *tmp_color;
-            else {
-                cerr << "Unable to parse color" << endl;
-                return;
-            }
-        }
+		if (payload == _rand_identifier) {
+			rand = true;
+		} else {
+			auto tmp_color = Moodlights::parse_color(payload);
+			if (tmp_color)
+				color = *tmp_color;
+			else {
+				cerr << "Unable to parse color" << endl;
+				return;
+			}
+		}
 
-        lock.lock();
-        if (rand)
-            if (lamp < MOODLIGHTS_LAMPS)
-                moodlights->rand(lamp);
-            else
-                moodlights->rand_all();
-        else if (lamp < MOODLIGHTS_LAMPS)
-            moodlights->set(lamp, color);
-        else
-            moodlights->set_all(color);
-        lock.unlock();
-        *hausbus << *moodlights;
+		lock.lock();
+		if (rand)
+			if (lamp < MOODLIGHTS_LAMPS)
+				moodlights->rand(lamp);
+			else
+				moodlights->rand_all();
+		else if (lamp < MOODLIGHTS_LAMPS)
+			moodlights->set(lamp, color);
+		else
+			moodlights->set_all(color);
+		lock.unlock();
+		*hausbus << *moodlights;
 
 status_out:
-        publish_status();
-    }
+		publish_status();
+	}
 
-    void publish_status()
-    {
-        std::string status;
-        int err;
-        for (int i = 0 ; i < 10 ; i++) {
-            status += Moodlights::color_to_string(moodlights->get(i));
-            if (i != 9) status += ' ';
-        }
-        err = publish(nullptr, _status_topic.c_str(), status.size()+1, status.c_str(), 0, false);
-        if (err != MOSQ_ERR_SUCCESS) {
-            cerr << "Mosquitto publish error: " << mosquitto_strerror(err) << endl;
-        }
-    }
+	void publish_status()
+	{
+		std::string status;
+		int err;
+		for (int i = 0 ; i < 10 ; i++) {
+			status += Moodlights::color_to_string(moodlights->get(i));
+			if (i != 9) status += ' ';
+		}
+		err = publish(nullptr, _status_topic.c_str(), status.size()+1, status.c_str(), 0, false);
+		if (err != MOSQ_ERR_SUCCESS) {
+			cerr << "Mosquitto publish error: " << mosquitto_strerror(err) << endl;
+		}
+	}
 };
 
 const std::string MQTT_Moodlights::_rand_identifier("rand");
@@ -223,74 +223,74 @@ const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
 static void signal_handler(int signo)
 {
-    if (hausbus && moodlights) {
-        moodlights->blank_all();
-        *hausbus << *moodlights;
-    }
-    moodlights.reset();
-    hausbus.reset();
+	if (hausbus && moodlights) {
+		moodlights->blank_all();
+		*hausbus << *moodlights;
+	}
+	moodlights.reset();
+	hausbus.reset();
 }
 
 int main(int argc, char **argv)
 {
-    int err;
-    if (argc != 2) {
-        cerr << "Usage: " << argv[0] << " device_name" << endl;
-        return -1;
-    }
-    // Wait for devices to settle down
-    sleep(10);
+	int err;
+	if (argc != 2) {
+		cerr << "Usage: " << argv[0] << " device_name" << endl;
+		return -1;
+	}
+	// Wait for devices to settle down
+	sleep(10);
 
 retry:
-    try {
-        err = mosqpp::lib_init();
-        if (err != MOSQ_ERR_SUCCESS)
-            throw std::runtime_error((std::string)"Mosquitto initialisation failed: " + mosquitto_strerror(err));
+	try {
+		err = mosqpp::lib_init();
+		if (err != MOSQ_ERR_SUCCESS)
+			throw std::runtime_error((std::string)"Mosquitto initialisation failed: " + mosquitto_strerror(err));
 
-        // Initialise Moodlights and Hausbus
-        hausbus = std::unique_ptr<Hausbus>(new Hausbus(argv[1]));
+		// Initialise Moodlights and Hausbus
+		hausbus = std::unique_ptr<Hausbus>(new Hausbus(argv[1]));
 
-        // source id: 0xFE
-        // destination id: 0x10, moodlights device identifier
-        moodlights = std::unique_ptr<Moodlights>(new Moodlights(MY_DEVICE_IDENTIFIER));
+		// source id: 0xFE
+		// destination id: 0x10, moodlights device identifier
+		moodlights = std::unique_ptr<Moodlights>(new Moodlights(MY_DEVICE_IDENTIFIER));
 
-        // initialise lamps
-        *hausbus << *moodlights;
+		// initialise lamps
+		*hausbus << *moodlights;
 
-        // register signal handlers
-        auto reg_sig = [] (int sig) -> void {
-            if (signal(sig, signal_handler) == SIG_ERR)
-            {
-                cerr << "Error registering signal handler" << endl;
-                throw std::runtime_error("Error registering signal");
-            }
-        };
-        reg_sig(SIGINT);
-        reg_sig(SIGTERM);
+		// register signal handlers
+		auto reg_sig = [] (int sig) -> void {
+			if (signal(sig, signal_handler) == SIG_ERR)
+			{
+				cerr << "Error registering signal handler" << endl;
+				throw std::runtime_error("Error registering signal");
+			}
+		};
+		reg_sig(SIGINT);
+		reg_sig(SIGTERM);
 
-        MQTT_Moodlights mq("MqttMoodlights",
-                           "172.23.4.6",
-                           "kitchen/moodlights",
-                           "kitchen/shutdown",
-                           "kitchen/moodlights/status");
+		MQTT_Moodlights mq("MqttMoodlights",
+		                   "172.23.4.6",
+		                   "kitchen/moodlights",
+		                   "kitchen/shutdown",
+		                   "kitchen/moodlights/status");
 
-        while (true) {
-            err = mq.loop_forever();
-            if (err != MOSQ_ERR_SUCCESS) {
-                cerr << "Mosquitto runtime error: " << mosquitto_strerror(err) << endl;
-                mq.reconnect();
-            }
-        }
+		while (true) {
+			err = mq.loop_forever();
+			if (err != MOSQ_ERR_SUCCESS) {
+				cerr << "Mosquitto runtime error: " << mosquitto_strerror(err) << endl;
+				mq.reconnect();
+			}
+		}
 
-        err = mosqpp::lib_cleanup();
-        if (err != MOSQ_ERR_SUCCESS)
-            throw std::runtime_error((std::string)"Mosquitto cleanup failed: " + mosquitto_strerror(err));
-    } catch (const std::exception &ex) {
-        cerr << argv[0] << " failed: " << ex.what() << endl;
-        sleep(10);
-        cerr << "Retrying..." << endl;
-        goto retry;
-    }
+		err = mosqpp::lib_cleanup();
+		if (err != MOSQ_ERR_SUCCESS)
+			throw std::runtime_error((std::string)"Mosquitto cleanup failed: " + mosquitto_strerror(err));
+	} catch (const std::exception &ex) {
+		cerr << argv[0] << " failed: " << ex.what() << endl;
+		sleep(10);
+		cerr << "Retrying..." << endl;
+		goto retry;
+	}
 
-    return 0;
+	return 0;
 }
