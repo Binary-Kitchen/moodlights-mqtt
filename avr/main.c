@@ -142,8 +142,6 @@ int main(void)
 
 	init_rs485();
 
-	memset(pwmdata, 0, PWMCHANNELS);
-
 	ONON;
 
 	while(1) {
