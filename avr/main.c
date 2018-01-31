@@ -35,14 +35,13 @@
 // DMX in: PE0 (RXD)
 
 // PWM values
-unsigned char pwmdata[PWMCHANNELS];
-unsigned char *datatouse, *databeingused;
-unsigned char pwmstep;
+static unsigned char pwmdata[PWMCHANNELS];
+static unsigned char pwmstep;
 // There are two datasets, so that the current PWM and data receive don't consufe each other.
 // receive shouldn't touch 'databeingused' and signals to the PWM with 'datatouse' is the data is complete.
 
 #define pwm(CHAN, PORT, VAL) \
-	if (databeingused[CHAN] > pwmcount) { \
+	if (pwmdata[CHAN] > pwmcount) { \
 		 PORT |= VAL; \
 	} else { \
 		PORT &= ~VAL; \
@@ -126,8 +125,6 @@ static void pwminterrupt(void)
 	pwm(28,PORTD,0x02);
 	rol();
 	pwm(29,PORTD,0x01);
-
-	if (pwmstep == 0xFF) databeingused = datatouse;
 }
 
 int main(void)
@@ -144,8 +141,6 @@ int main(void)
 	PORTG = 0x08;
 
 	init_rs485();
-
-	databeingused = datatouse = pwmdata;
 
 	memset(pwmdata, 0, PWMCHANNELS);
 
