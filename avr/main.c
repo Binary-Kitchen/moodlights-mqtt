@@ -37,7 +37,6 @@
 void inithw(void);
 
 // PWM values
-void pwminterrupt(void);
 unsigned char pwmdata[PWMCHANNELS];
 unsigned char *datatouse, *databeingused;
 unsigned char pwmstep;
@@ -52,50 +51,17 @@ unsigned int dmxAddress; // Current address receiving on
 unsigned int dmxListening; // Current address listening on, is updated every break from the dipswitches
 unsigned char uartStatus, uartData;
 
-int main(void)
-{
-	inithw();
-	init_rs485();
-
-	databeingused = datatouse = pwmdata;
-
-	memset(pwmdata, 0, PWMCHANNELS);
-
-	ONON;
-
-	while(1) {
-		// UART is explicitely not done in interrupts because
-		// it is hardware buffered and can stand being interrupted
-		// The PWM does not like being interrupted :)
-		pwminterrupt();
-		if (recv && payload_length == PWMCHANNELS) {
-			cli();
-
-			recv = 0;
-			memcpy((void*)pwmdata, (const void*)buffer, PWMCHANNELS);
-
-			sei();
-		}
+#define pwm(CHAN, PORT, VAL) \
+	if (databeingused[CHAN] > pwmcount) { \
+		 PORT |= VAL; \
+	} else { \
+		PORT &= ~VAL; \
+		asm volatile ("nop"); \
 	}
 
-	return 0;
-}
+#define rol() pwmcount += 8;
 
-void inithw(void)
-{
-	DDRA = 0xFF;
-	DDRB = 0x0;
-	DDRC = 0xFF;
-	DDRD = 0xFF;
-	DDRE = 0x48;
-	DDRF = 0x0E;
-
-	// Pull-ups
-	PORTB = 0xFF;
-	PORTG = 0x08;
-}
-
-void pwminterrupt()
+static void pwminterrupt(void)
 {
 	unsigned char pwmcount;
 	// This does the PWM (d0h).
@@ -107,9 +73,6 @@ void pwminterrupt()
 	// the outputs, using the ROL instruction, which is
 	// strangly 'optimized' to adc by the compiler which is identical
 
-#define pwm(CHAN, PORT, VAL) if (databeingused[CHAN] > pwmcount) { PORT |= VAL; } else { PORT &= ~VAL; asm("nop"::); }
-//#define rol() asm("rol %0" : "=r" (pwmcount) : "0" (pwmcount))
-#define rol() pwmcount += 8;
 
 	pwmstep++;
 	pwmcount = pwmstep;
@@ -175,4 +138,43 @@ void pwminterrupt()
 	pwm(29,PORTD,0x01);
 
 	if (pwmstep == 0xFF) databeingused = datatouse;
+}
+
+int main(void)
+{
+	DDRA = 0xFF;
+	DDRB = 0x0;
+	DDRC = 0xFF;
+	DDRD = 0xFF;
+	DDRE = 0x48;
+	DDRF = 0x0E;
+
+	// Pull-ups
+	PORTB = 0xFF;
+	PORTG = 0x08;
+
+	init_rs485();
+
+	databeingused = datatouse = pwmdata;
+
+	memset(pwmdata, 0, PWMCHANNELS);
+
+	ONON;
+
+	while(1) {
+		// UART is explicitely not done in interrupts because
+		// it is hardware buffered and can stand being interrupted
+		// The PWM does not like being interrupted :)
+		pwminterrupt();
+		if (recv && payload_length == PWMCHANNELS) {
+			cli();
+
+			recv = 0;
+			memcpy((void*)pwmdata, (const void*)buffer, PWMCHANNELS);
+
+			sei();
+		}
+	}
+
+	return 0;
 }
