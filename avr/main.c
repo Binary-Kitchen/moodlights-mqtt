@@ -34,22 +34,12 @@
 // 9 bit DMX address: PB0 .. PB7, PG3.
 // DMX in: PE0 (RXD)
 
-void inithw(void);
-
 // PWM values
 unsigned char pwmdata[PWMCHANNELS];
 unsigned char *datatouse, *databeingused;
 unsigned char pwmstep;
 // There are two datasets, so that the current PWM and data receive don't consufe each other.
 // receive shouldn't touch 'databeingused' and signals to the PWM with 'datatouse' is the data is complete.
-
-// ^^ not actually used, but it was a nice idea :)
-
-// DMX values
-unsigned char breakReceived; // This will turn one on after the first break ever, this makes sure that the first data received is correct.
-unsigned int dmxAddress; // Current address receiving on
-unsigned int dmxListening; // Current address listening on, is updated every break from the dipswitches
-unsigned char uartStatus, uartData;
 
 #define pwm(CHAN, PORT, VAL) \
 	if (databeingused[CHAN] > pwmcount) { \
