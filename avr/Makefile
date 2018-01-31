@@ -14,7 +14,7 @@ MCU ?= atmega169
 F_OSC ?= 16000000
 UART_BAUD ?= 115200
 
-OBJS = main.o rs485.o
+OBJS = main.o uart.o
 
 CC = avr-gcc
 OBJCOPY = avr-objcopy

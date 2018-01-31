@@ -5,7 +5,7 @@
 #include <avr/interrupt.h>
 
 #include "common.h"
-#include "rs485.h"
+#include "uart.h"
 
 // This is the program code for the 30 channel (10 channel RGB) DMX controlled
 // dimmer made for OHM2013 by SA007.

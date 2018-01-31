@@ -1,5 +1,5 @@
-#ifndef RS485_H
-#define RS485_H
+#ifndef UART_H
+#define UART_H
 
 #define RS485_SUCCESS 0
 #define RS485_FAIL 1
@@ -22,4 +22,4 @@ extern volatile unsigned char buffer[MAX_PAYLOAD];
 extern volatile unsigned char payload_length;
 extern volatile unsigned char recv;
 
-#endif
+#endif /* UART_H */

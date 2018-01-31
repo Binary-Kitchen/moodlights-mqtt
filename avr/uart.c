@@ -3,7 +3,7 @@
 #include <avr/pgmspace.h>
 
 #include "common.h"
-#include "rs485.h"
+#include "uart.h"
 
 #define TIMER_OFF {\
 TIMSK1 = 0;\
