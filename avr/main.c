@@ -77,6 +77,8 @@ int main(void)
 			sei();
 		}
 	}
+
+	return 0;
 }
 
 void inithw(void)
