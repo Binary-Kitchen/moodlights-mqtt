@@ -64,6 +64,7 @@ public:
 
 	virtual ~MQTT_Moodlights()
 	{
+		moodlights->blank_all();
 		loop_stop();
 	}
 
@@ -221,16 +222,6 @@ const std::string MQTT_Moodlights::_rand_identifier("rand");
 const std::string MQTT_Moodlights::_get_subtopic("get");
 const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
-static void signal_handler(int signo)
-{
-	if (hausbus && moodlights) {
-		moodlights->blank_all();
-		*hausbus << *moodlights;
-	}
-	moodlights.reset();
-	hausbus.reset();
-}
-
 int main(int argc, char **argv)
 {
 	int err;
@@ -238,8 +229,6 @@ int main(int argc, char **argv)
 		cerr << "Usage: " << argv[0] << " device_name" << endl;
 		return -1;
 	}
-	// Wait for devices to settle down
-	sleep(10);
 
 retry:
 	try {
@@ -256,17 +245,6 @@ retry:
 
 		// initialise lamps
 		*hausbus << *moodlights;
-
-		// register signal handlers
-		auto reg_sig = [] (int sig) -> void {
-			if (signal(sig, signal_handler) == SIG_ERR)
-			{
-				cerr << "Error registering signal handler" << endl;
-				throw std::runtime_error("Error registering signal");
-			}
-		};
-		reg_sig(SIGINT);
-		reg_sig(SIGTERM);
 
 		MQTT_Moodlights mq("MqttMoodlights",
 		                   "172.23.4.6",
