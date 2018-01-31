@@ -52,123 +52,125 @@ unsigned int dmxAddress; // Current address receiving on
 unsigned int dmxListening; // Current address listening on, is updated every break from the dipswitches
 unsigned char uartStatus, uartData;
 
-int main(void) {
-  inithw();
-  init_rs485();
+int main(void)
+{
+	inithw();
+	init_rs485();
 
-  databeingused = datatouse = pwmdata;
+	databeingused = datatouse = pwmdata;
 
-  memset(pwmdata, 0, PWMCHANNELS);
+	memset(pwmdata, 0, PWMCHANNELS);
 
-  ONON;
+	ONON;
 
-  while(1) {
-    // UART is explicitely not done in interrupts because
-    // it is hardware buffered and can stand being interrupted
-    // The PWM does not like being interrupted :)
-    pwminterrupt();
-    if (recv && payload_length == PWMCHANNELS)
-    {
-        cli();
+	while(1) {
+		// UART is explicitely not done in interrupts because
+		// it is hardware buffered and can stand being interrupted
+		// The PWM does not like being interrupted :)
+		pwminterrupt();
+		if (recv && payload_length == PWMCHANNELS) {
+			cli();
 
-        recv = 0;
-        memcpy((void*)pwmdata, (const void*)buffer, PWMCHANNELS);
+			recv = 0;
+			memcpy((void*)pwmdata, (const void*)buffer, PWMCHANNELS);
 
-        sei();
-    }
-  }
+			sei();
+		}
+	}
 }
 
-void inithw(void) {
-  DDRA = 0xFF;
-  DDRB = 0x0;
-  DDRC = 0xFF;
-  DDRD = 0xFF;
-  DDRE = 0x48;
-  DDRF = 0x0E;
+void inithw(void)
+{
+	DDRA = 0xFF;
+	DDRB = 0x0;
+	DDRC = 0xFF;
+	DDRD = 0xFF;
+	DDRE = 0x48;
+	DDRF = 0x0E;
 
-  // Pull-ups
-  PORTB = 0xFF;
-  PORTG = 0x08;
+	// Pull-ups
+	PORTB = 0xFF;
+	PORTG = 0x08;
 }
 
-void pwminterrupt() {
-  unsigned char pwmcount;
-  // This does the PWM (d0h).
-  // Main qualities of this code are:
-  // Fast, should run very often to gat a smooth pwm
-  // Staggered, so the PWM current is limited
+void pwminterrupt()
+{
+	unsigned char pwmcount;
+	// This does the PWM (d0h).
+	// Main qualities of this code are:
+	// Fast, should run very often to gat a smooth pwm
+	// Staggered, so the PWM current is limited
 
-  // Staggering is done by shifting the PWM value trough
-  // the outputs, using the ROL instruction, which is
-  // strangly 'optimized' to adc by the compiler which is identical
+	// Staggering is done by shifting the PWM value trough
+	// the outputs, using the ROL instruction, which is
+	// strangly 'optimized' to adc by the compiler which is identical
 
 #define pwm(CHAN, PORT, VAL) if (databeingused[CHAN] > pwmcount) { PORT |= VAL; } else { PORT &= ~VAL; asm("nop"::); }
 //#define rol() asm("rol %0" : "=r" (pwmcount) : "0" (pwmcount))
 #define rol() pwmcount += 8;
 
-  pwmstep++;
-  pwmcount = pwmstep;
+	pwmstep++;
+	pwmcount = pwmstep;
 
-  pwm(0,PORTF,0x02);
-  rol();
-  pwm(1,PORTF,0x04);
-  rol();
-  pwm(2,PORTF,0x08);
-  rol();
-  pwm(3,PORTA,0x01);
-  rol();
-  pwm(4,PORTA,0x02);
-  rol();
-  pwm(5,PORTA,0x04);
-  rol();
-  pwm(6,PORTA,0x08);
-  rol();
-  pwm(7,PORTA,0x10);
-  rol();
-  pwm(8,PORTA,0x20);
-  rol();
-  pwm(9,PORTA,0x40);
-  rol();
-  pwm(10,PORTA,0x80);
-  rol();
-  pwm(11,PORTG,0x04);
-  rol();
-  pwm(12,PORTC,0x80);
-  rol();
-  pwm(13,PORTC,0x40);
-  rol();
-  pwm(14,PORTC,0x20);
-  rol();
-  pwm(15,PORTC,0x10);
-  rol();
-  pwm(16,PORTC,0x08);
-  rol();
-  pwm(17,PORTC,0x04);
-  rol();
-  pwm(18,PORTC,0x02);
-  rol();
-  pwm(19,PORTC,0x01);
-  rol();
-  pwm(20,PORTG,0x02);
-  rol();
-  pwm(21,PORTG,0x01);
-  rol();
-  pwm(22,PORTD,0x80);
-  rol();
-  pwm(23,PORTD,0x40);
-  rol();
-  pwm(24,PORTD,0x20);
-  rol();
-  pwm(25,PORTD,0x10);
-  rol();
-  pwm(26,PORTD,0x08);
-  rol();
-  pwm(27,PORTD,0x04);
-  rol();
-  pwm(28,PORTD,0x02);
-  rol();
-  pwm(29,PORTD,0x01);
+	pwm(0,PORTF,0x02);
+	rol();
+	pwm(1,PORTF,0x04);
+	rol();
+	pwm(2,PORTF,0x08);
+	rol();
+	pwm(3,PORTA,0x01);
+	rol();
+	pwm(4,PORTA,0x02);
+	rol();
+	pwm(5,PORTA,0x04);
+	rol();
+	pwm(6,PORTA,0x08);
+	rol();
+	pwm(7,PORTA,0x10);
+	rol();
+	pwm(8,PORTA,0x20);
+	rol();
+	pwm(9,PORTA,0x40);
+	rol();
+	pwm(10,PORTA,0x80);
+	rol();
+	pwm(11,PORTG,0x04);
+	rol();
+	pwm(12,PORTC,0x80);
+	rol();
+	pwm(13,PORTC,0x40);
+	rol();
+	pwm(14,PORTC,0x20);
+	rol();
+	pwm(15,PORTC,0x10);
+	rol();
+	pwm(16,PORTC,0x08);
+	rol();
+	pwm(17,PORTC,0x04);
+	rol();
+	pwm(18,PORTC,0x02);
+	rol();
+	pwm(19,PORTC,0x01);
+	rol();
+	pwm(20,PORTG,0x02);
+	rol();
+	pwm(21,PORTG,0x01);
+	rol();
+	pwm(22,PORTD,0x80);
+	rol();
+	pwm(23,PORTD,0x40);
+	rol();
+	pwm(24,PORTD,0x20);
+	rol();
+	pwm(25,PORTD,0x10);
+	rol();
+	pwm(26,PORTD,0x08);
+	rol();
+	pwm(27,PORTD,0x04);
+	rol();
+	pwm(28,PORTD,0x02);
+	rol();
+	pwm(29,PORTD,0x01);
 
-  if (pwmstep == 0xFF) databeingused = datatouse;
+	if (pwmstep == 0xFF) databeingused = datatouse;
 }
