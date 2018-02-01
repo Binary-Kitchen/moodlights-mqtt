@@ -1,25 +1,11 @@
 #ifndef UART_H
 #define UART_H
 
-#define RS485_SUCCESS 0
-#define RS485_FAIL 1
+#include <stdbool.h>
 
-#define MAX_PAYLOAD 64
+extern void uart_init(void);
 
-#define RS485_PREAMBLE 0x40
-
-#define RS485_IDLE 0
-#define RS485_RXACT 1
-#define RS485_SRC 2
-#define RS485_DST 3
-#define RS485_PAYLOAD_LEN 4
-#define RS485_PAYLOAD 5
-#define RS485_CRC 6
-
-extern void init_rs485(void);
-
-extern volatile unsigned char buffer[MAX_PAYLOAD];
-extern volatile unsigned char payload_length;
-extern volatile unsigned char recv;
+extern unsigned char *uart_pwm_buffer;
+extern bool uart_data_rdy;
 
 #endif /* UART_H */

@@ -35,7 +35,10 @@
 // DMX in: PE0 (RXD)
 
 // PWM values
-static unsigned char pwmdata[PWMCHANNELS];
+static unsigned char pwmdata_a[PWMCHANNELS], pwmdata_b[PWMCHANNELS];
+static unsigned char *pwmdata = pwmdata_a;
+unsigned char *uart_pwm_buffer = pwmdata_b;
+
 static unsigned char pwmstep;
 // There are two datasets, so that the current PWM and data receive don't consufe each other.
 // receive shouldn't touch 'databeingused' and signals to the PWM with 'datatouse' is the data is complete.
@@ -129,6 +132,8 @@ static void pwminterrupt(void)
 
 int main(void)
 {
+	unsigned char *swp;
+
 	DDRA = 0xFF;
 	DDRB = 0x0;
 	DDRC = 0xFF;
@@ -140,7 +145,7 @@ int main(void)
 	PORTB = 0xFF;
 	PORTG = 0x08;
 
-	init_rs485();
+	uart_init();
 
 	ONON;
 
@@ -149,12 +154,12 @@ int main(void)
 		// it is hardware buffered and can stand being interrupted
 		// The PWM does not like being interrupted :)
 		pwminterrupt();
-		if (recv && payload_length == PWMCHANNELS) {
+		if (uart_data_rdy) {
 			cli();
-
-			recv = 0;
-			memcpy((void*)pwmdata, (const void*)buffer, PWMCHANNELS);
-
+			swp = pwmdata;
+			pwmdata = uart_pwm_buffer;
+			uart_pwm_buffer = swp;
+			uart_data_rdy = false;
 			sei();
 		}
 	}
