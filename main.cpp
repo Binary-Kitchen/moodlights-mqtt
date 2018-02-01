@@ -1,7 +1,7 @@
 /*
  * moodlights-mqtt: A RS485 <-> mqtt bridge
  *
- * Copyright (c) Ralf Ramsauer, 2016, 2018
+ * Copyright (c) Ralf Ramsauer, 2016-2018
  *
  * Authors:
  *   Ralf Ramsauer <ralf@binary-kitchen.de>
@@ -10,42 +10,39 @@
  * the LICENSE file in the top-level directory.
  */
 
+#define DEBUG 1
+
+#include <termios.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <iostream>
-#include <memory>
 #include <mutex>
 #include <regex>
 
 #include <boost/tokenizer.hpp>
-
-#include <signal.h>
 #include <mosquittopp.h>
 
-#include "libhausbus/hausbus.h"
-#include "libhausbus/moodlights.h"
+#include "moodlights.h"
 
 using namespace std;
-
-#define MY_DEVICE_IDENTIFIER 0xfe
 
 // gobal access mutex to prevent race conditions
 static std::mutex global_mutex;
 
-// allow global access to hausbus and moodlights via unique_ptrs
-static std::unique_ptr<Hausbus> hausbus = nullptr;
-static std::unique_ptr<Moodlights> moodlights = nullptr;
-
 class MQTT_Moodlights : public mosqpp::mosquittopp
 {
 public:
-	MQTT_Moodlights(const std::string &id,
+	MQTT_Moodlights(const int fd,
+			const std::string &id,
 	                const std::string &host,
 	                const std::string &moodlight_topic,
 	                const std::string &shutdown_topic,
 	                const std::string &status_topic,
 	                int port = 1883) :
 		mosquittopp(id.c_str()),
+		_moodlights(fd),
 		_id(id),
 		_moodlight_topic(moodlight_topic + "/"),
 		_shutdown_topic(shutdown_topic),
@@ -64,7 +61,7 @@ public:
 
 	virtual ~MQTT_Moodlights()
 	{
-		moodlights->blank_all();
+		_moodlights.blank_all();
 		loop_stop();
 	}
 
@@ -78,6 +75,8 @@ private:
 	const std::string _host;
 	const int _port;
 	const int _keepalive;
+	Moodlights _moodlights;
+
 
 	const std::regex _topic_regex;
 	const static std::regex _lamp_regex;
@@ -113,7 +112,7 @@ private:
 		std::string topic(msg->topic);
 		std::string payload((const char*)msg->payload, msg->payloadlen);
 
-		Byte lamp = 0;
+		unsigned char lamp = 0;
 		std::smatch sm;
 
 #ifdef DEBUG
@@ -124,11 +123,8 @@ private:
 		if (topic == _shutdown_topic) {
 			cout << "Received shutdown message" << endl;
 			lock.lock();
-			moodlights->blank_all();
-			*hausbus << *moodlights;
-			lock.unlock();
-
-			goto status_out;
+			_moodlights.blank_all();
+			goto update_unlock;
 		}
 
 		// ignore status topic
@@ -150,21 +146,17 @@ private:
 			for (const auto &token: tokens) {
 				const std::experimental::optional<Moodlights::Color> tmp_color = Moodlights::parse_color(token);
 				if (tmp_color) {
-					moodlights->set(i++, *tmp_color);
+					_moodlights.set(i++, *tmp_color);
 				} else if (token == _rand_identifier) {
-					moodlights->rand(i++);
+					_moodlights.rand(i++);
 				} else {
 					cerr << "Unable to parse part of payload" << endl;
-					*hausbus << *moodlights;
-					lock.unlock();
-					goto status_out;
+					goto update_unlock;
 				}
 				if (i == 10)
 					break;
 			}
-			*hausbus << *moodlights;
-			lock.unlock();
-			goto status_out;
+			goto update_unlock;
 		} else if (topic == _get_subtopic) {
 			goto status_out;
 		} else if (!std::regex_match(topic, sm, _lamp_regex)) {
@@ -172,7 +164,7 @@ private:
 			return;
 		}
 
-		lamp = (Byte)::strtoul(((std::string)sm[1]).c_str(), nullptr, 16);
+		lamp = (unsigned char)::strtoul(((std::string)sm[1]).c_str(), nullptr, 16);
 
 		if (payload == _rand_identifier) {
 			rand = true;
@@ -188,17 +180,20 @@ private:
 
 		lock.lock();
 		if (rand)
-			if (lamp < MOODLIGHTS_LAMPS)
-				moodlights->rand(lamp);
-			else
-				moodlights->rand_all();
-		else if (lamp < MOODLIGHTS_LAMPS)
-			moodlights->set(lamp, color);
-		else
-			moodlights->set_all(color);
-		lock.unlock();
-		*hausbus << *moodlights;
+			if (lamp < MOODLIGHTS_LAMPS) {
+				_moodlights.rand(lamp);
+			} else {
+				_moodlights.rand_all();
+			}
+		else if (lamp < MOODLIGHTS_LAMPS) {
+			_moodlights.set(lamp, color);
+		} else {
+			_moodlights.set_all(color);
+		}
 
+update_unlock:
+		lock.unlock();
+		_moodlights.update();
 status_out:
 		publish_status();
 	}
@@ -208,7 +203,7 @@ status_out:
 		std::string status;
 		int err;
 		for (int i = 0 ; i < 10 ; i++) {
-			status += Moodlights::color_to_string(moodlights->get(i));
+			status += Moodlights::color_to_string(_moodlights.get(i));
 			if (i != 9) status += ' ';
 		}
 		err = publish(nullptr, _status_topic.c_str(), status.size()+1, status.c_str(), 0, false);
@@ -224,30 +219,74 @@ const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
 int main(int argc, char **argv)
 {
-	int err;
+	const char *device = argv[1];
+	speed_t speed = B115200;
+        struct termios tty;
+	int err, fd;
+
 	if (argc != 2) {
 		cerr << "Usage: " << argv[0] << " device_name" << endl;
 		return -1;
 	}
 
+	err = mosqpp::lib_init();
+	if (err != MOSQ_ERR_SUCCESS) {
+		cerr << "Mosquitto initialisation failed: " << mosquitto_strerror(err) << endl;
+		return -1;
+	}
+
+        fd = open(device, O_RDWR);
+        if (fd == -1) {
+		perror(("opening " + string(device)).c_str());
+		goto mosq_out;
+	}
+
+        memset(&tty, 0, sizeof tty);
+        err = tcgetattr (fd, &tty);
+	if (err) {
+		perror("tcgetattr");
+		goto close_out;
+	}
+
+        err = cfsetospeed (&tty, speed);
+	if (err) {
+		perror("cfsetospeed");
+		goto close_out;
+	}
+
+        err = cfsetispeed(&tty, speed);
+	if (err) {
+		perror("cfsetispeed");
+		goto close_out;
+	}
+
+        tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;
+        tty.c_iflag &= ~IGNBRK;
+        tty.c_lflag = 0;
+        tty.c_oflag = 0;
+        tty.c_cc[VMIN]  = 0;
+        tty.c_cc[VTIME] = 5;
+
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY);
+
+        tty.c_cflag |= (CLOCAL | CREAD);
+        tty.c_cflag &= ~(PARENB | PARODD);
+        tty.c_cflag &= ~CSTOPB;
+        tty.c_cflag &= ~CRTSCTS;
+
+        err = tcsetattr (fd, TCSANOW, &tty);
+	if (err) {
+		perror("tcsetattr: ");
+		goto close_out;
+	}
+
+	srand(time(nullptr));
+
 retry:
 	try {
-		err = mosqpp::lib_init();
-		if (err != MOSQ_ERR_SUCCESS)
-			throw std::runtime_error((std::string)"Mosquitto initialisation failed: " + mosquitto_strerror(err));
-
-		// Initialise Moodlights and Hausbus
-		hausbus = std::unique_ptr<Hausbus>(new Hausbus(argv[1]));
-
-		// source id: 0xFE
-		// destination id: 0x10, moodlights device identifier
-		moodlights = std::unique_ptr<Moodlights>(new Moodlights(MY_DEVICE_IDENTIFIER));
-
-		// initialise lamps
-		*hausbus << *moodlights;
-
-		MQTT_Moodlights mq("MqttMoodlights",
-		                   "172.23.4.6",
+		MQTT_Moodlights mq(fd,
+				   "MqttMoodlights",
+		                   "localhost",
 		                   "kitchen/moodlights",
 		                   "kitchen/shutdown",
 		                   "kitchen/moodlights/status");
@@ -259,10 +298,6 @@ retry:
 				mq.reconnect();
 			}
 		}
-
-		err = mosqpp::lib_cleanup();
-		if (err != MOSQ_ERR_SUCCESS)
-			throw std::runtime_error((std::string)"Mosquitto cleanup failed: " + mosquitto_strerror(err));
 	} catch (const std::exception &ex) {
 		cerr << argv[0] << " failed: " << ex.what() << endl;
 		sleep(10);
@@ -270,5 +305,9 @@ retry:
 		goto retry;
 	}
 
-	return 0;
+close_out:
+	close(fd);
+mosq_out:
+	mosqpp::lib_cleanup();
+	return err;
 }

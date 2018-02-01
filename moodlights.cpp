@@ -1,7 +1,7 @@
 /*
  * libhausbus: A RS485 Hausbus library
  *
- * Copyright (c) Ralf Ramsauer, 2016
+ * Copyright (c) Ralf Ramsauer, 2016-2018
  *
  * Authors:
  *   Ralf Ramsauer <ralf@binary-kitchen.de>
@@ -10,14 +10,17 @@
  * the LICENSE file in the top-level directory.
  */
 
-#include <cstdlib>
+#include <unistd.h>
 
 #include "moodlights.h"
 
-#define rand_byte() ((Byte)::rand())
+static inline unsigned char rand_byte(void)
+{
+	return (unsigned char)::rand();
+}
 
 const std::regex Moodlights::_color_regex("#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})");
-const Byte Moodlights::_gamma_correction[256] = {
+const unsigned char Moodlights::_gamma_correction[256] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01,
 	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
@@ -36,9 +39,8 @@ const Byte Moodlights::_gamma_correction[256] = {
 	0xD7, 0xDA, 0xDC, 0xDF, 0xE1, 0xE4, 0xE7, 0xE9, 0xEC, 0xEF, 0xF1, 0xF4, 0xF7, 0xF9, 0xFC, 0xFF,
 };
 
-Moodlights::Moodlights(const Byte src, const Byte dst) :
-	_src(src),
-	_dst(dst)
+Moodlights::Moodlights(const int fd) :
+	_fd(fd)
 {
 	set_all(Color {0, 0, 0});
 }
@@ -59,8 +61,8 @@ std::experimental::optional<Moodlights::Color> Moodlights::parse_color(const std
 	if (!std::regex_match(str, sm, _color_regex))
 		return std::experimental::optional<Color>();
 
-	auto fromHex = [] (const std::string hex) -> Byte {
-		return (Byte)strtoul(hex.c_str(), nullptr, 16);
+	auto fromHex = [] (const std::string hex) -> unsigned char {
+		return (unsigned char)strtoul(hex.c_str(), nullptr, 16);
 	};
 
 	retval[0] = fromHex(sm[1]);
@@ -110,9 +112,9 @@ void Moodlights::rand_all()
 		lamp = rand_color();
 }
 
-Data Moodlights::get_payload() const
+void Moodlights::update() const
 {
-	Data payload(MOODLIGHTS_LAMPS * 3);
+	unsigned char payload[MOODLIGHTS_LAMPS * 3];
 
 	// assemble packet
 	for (int i = 0 ; i < MOODLIGHTS_LAMPS ; i++) {
@@ -121,7 +123,7 @@ Data Moodlights::get_payload() const
 		payload[i*3 + 2] = _gamma_correction[_lamps[i][2]];
 	}
 
-	return payload;
+	::write(_fd, payload, sizeof(payload));
 }
 
 void Moodlights::blank(unsigned int no)
@@ -132,10 +134,4 @@ void Moodlights::blank(unsigned int no)
 void Moodlights::blank_all()
 {
 	set_all(Color {0, 0, 0});
-}
-
-Hausbus &operator <<(Hausbus &h, const Moodlights &m)
-{
-	h.send(m._src, m._dst, m.get_payload());
-	return h;
 }

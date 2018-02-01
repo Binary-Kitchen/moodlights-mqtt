@@ -1,7 +1,7 @@
 /*
  * libhausbus: A RS485 Hausbus library
  *
- * Copyright (c) Ralf Ramsauer, 2016
+ * Copyright (c) Ralf Ramsauer, 2016-2018
  *
  * Authors:
  *   Ralf Ramsauer <ralf@binary-kitchen.de>
@@ -16,9 +16,6 @@
 #include <experimental/optional>
 #include <regex>
 
-#include "hausbus.h"
-#include "data.h"
-
 #define MOODLIGHTS_LAMPS 10
 #define MOODLIGHT_DEFAULT_IDENTIFIER 0x10
 
@@ -26,9 +23,9 @@ class Moodlights
 {
 public:
 	// Format: R:G:B
-	using Color = std::array<Byte, 3>;
+	using Color = std::array<unsigned char, 3>;
 
-	Moodlights(const Byte src, const Byte dst = MOODLIGHT_DEFAULT_IDENTIFIER);
+	Moodlights(const int fd);
 	~Moodlights();
 
 	static Color rand_color();
@@ -45,17 +42,12 @@ public:
 	void rand(const unsigned int no);
 	void rand_all();
 
-	Data get_payload() const;
-
-	friend Hausbus& operator <<(Hausbus &in, const Moodlights &m);
+	void update() const;
 
 private:
-
-	const Byte _src;
-	const Byte _dst;
-
 	std::array<Color, MOODLIGHTS_LAMPS> _lamps;
 
-	const static Byte _gamma_correction[256];
+	const int _fd;
+	const static unsigned char _gamma_correction[256];
 	const static std::regex _color_regex;
 };

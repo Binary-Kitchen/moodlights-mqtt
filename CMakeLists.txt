@@ -5,9 +5,7 @@ add_definitions(-std=c++1z)
 
 set(SRCS
 	main.cpp
-	libhausbus/crc8.cpp
-	libhausbus/hausbus.cpp
-	libhausbus/moodlights.cpp)
+	moodlights.cpp)
 
 add_executable(moodlights_mqtt ${SRCS})
 
