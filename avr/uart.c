@@ -15,7 +15,7 @@ TCCR1B = 0;\
 TIMSK1 |= (1<<OCIE1A);\
 TIFR1 |= (1<<OCF1A);\
 TCNT1 = 0;\
-TCCR1B = (1<<CS10);\
+TCCR1B = (1<<CS10) | (1<<CS11);\
 }
 
 static bool rx_active;
@@ -57,7 +57,7 @@ ISR(USART0_RX_vect)
 
 void uart_init(void)
 {
-	UBRRL = 8;
+	UBRRL = 25;
 	UBRRH = 0;
 	// Enable receiver + enable receive interrupt
 	UCSRB = (1<<RXEN)|(1<<RXCIE);
@@ -70,7 +70,7 @@ void uart_init(void)
 
 	TCNT1 = 0;
 	//OCR1A = 1600; // ~100µS
-	OCR1A = 16000; // ~1mS
+	OCR1A = 16000; // ~64 * 1mS
 
 	// Disable interrupt
 	TIMER_OFF;

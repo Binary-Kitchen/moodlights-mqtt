@@ -219,7 +219,7 @@ const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
 int main(int argc, char **argv)
 {
-	speed_t speed = B115200;
+	speed_t speed = B38400;
         struct termios tty;
 	int err, fd;
 
