@@ -219,7 +219,6 @@ const std::regex MQTT_Moodlights::_lamp_regex("set/([0-9a-fA-F])");
 
 int main(int argc, char **argv)
 {
-	const char *device = argv[1];
 	speed_t speed = B115200;
         struct termios tty;
 	int err, fd;
@@ -235,9 +234,9 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-        fd = open(device, O_RDWR);
+        fd = open(argv[1], O_RDWR);
         if (fd == -1) {
-		perror(("opening " + string(device)).c_str());
+		perror(("opening " + string(argv[1])).c_str());
 		goto mosq_out;
 	}
 
@@ -282,27 +281,27 @@ int main(int argc, char **argv)
 
 	srand(time(nullptr));
 
-retry:
-	try {
-		MQTT_Moodlights mq(fd,
-				   "MqttMoodlights",
-		                   "localhost",
-		                   "kitchen/moodlights",
-		                   "kitchen/shutdown",
-		                   "kitchen/moodlights/status");
+	for(;;) {
+		try {
+			MQTT_Moodlights mq(fd,
+					   "MqttMoodlights",
+			                   "172.23.4.6",
+			                   "kitchen/moodlights",
+			                   "kitchen/shutdown",
+			                   "kitchen/moodlights/status");
 
-		while (true) {
-			err = mq.loop_forever();
-			if (err != MOSQ_ERR_SUCCESS) {
-				cerr << "Mosquitto runtime error: " << mosquitto_strerror(err) << endl;
-				mq.reconnect();
+			while (true) {
+				err = mq.loop_forever();
+				if (err != MOSQ_ERR_SUCCESS) {
+					cerr << "Mosquitto runtime error: " << mosquitto_strerror(err) << endl;
+					mq.reconnect();
+				}
 			}
+		} catch (const std::exception &ex) {
+			cerr << argv[0] << " failed: " << ex.what() << endl;
+			sleep(10);
+			cerr << "Retrying..." << endl;
 		}
-	} catch (const std::exception &ex) {
-		cerr << argv[0] << " failed: " << ex.what() << endl;
-		sleep(10);
-		cerr << "Retrying..." << endl;
-		goto retry;
 	}
 
 close_out:
